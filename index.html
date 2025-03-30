@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoDetect - Automatic Deadlock Detection System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --accent: #e74c3c;
+            --light: #ecf0f1;
+            --dark: #2c3e50;
+            --success: #2ecc71;
+        }
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--primary), var(--dark));
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        header::before {
+            content: "";
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
+            animation: pulse 15s infinite linear;
+        }
+        
+        @keyframes pulse {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        nav {
+            background: var(--dark);
+            display: flex;
+            justify-content: center;
+            padding: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        nav a {
+            color: white;
+            text-decoration: none;
+            padding: 0.7rem 1.5rem;
+            margin: 0 0.5rem;
+            border-radius: 4px;
+            transition: all 0.3s;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+        }
+        
+        nav a i {
+            margin-right: 8px;
+        }
+        
+        nav a:hover {
+            background: var(--secondary);
+            transform: translateY(-2px);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+        
+        .hero {
+            background: linear-gradient(135deg, var(--secondary), #2980b9);
+            color: white;
+            padding: 4rem 2rem;
+            text-align: center;
+            border-radius: 10px;
+            margin-bottom: 3rem;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .hero h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .hero p {
+            font-size: 1.2rem;
+            max-width: 800px;
+            margin: 0 auto 2rem;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+        
+        .feature-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+            border-top: 4px solid var(--secondary);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .feature-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(52,152,219,0.1) 0%, rgba(0,0,0,0) 100%);
+            z-index: 0;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+        }
+        
+        .feature-card h3 {
+            color: var(--secondary);
+            margin-top: 0;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .feature-card p {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .feature-icon {
+            font-size: 2.5rem;
+            color: var(--secondary);
+            margin-bottom: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .visualization {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 10px;
+            margin: 3rem 0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            border: 1px solid #eee;
+        }
+        
+        .graph-container {
+            width: 100%;
+            height: 500px;
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            margin: 2rem 0;
+            position: relative;
+            overflow: hidden;
+            border-radius: 8px;
+        }
+        
+        .node {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            cursor: move;
+            user-select: none;
+            z-index: 10;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+        
+        .process {
+            background: var(--secondary);
+        }
+        
+        .resource {
+            background: var(--accent);
+        }
+        
+        .edge {
+            position: absolute;
+            height: 3px;
+            background: var(--dark);
+            transform-origin: 0 0;
+            z-index: 5;
+        }
+        
+        .arrow {
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-style: solid;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin: 1rem 0;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--secondary);
+            color: white;
+            padding: 0.8rem 1.8rem;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            margin-top: 1rem;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+        }
+        
+        .btn i {
+            margin-right: 8px;
+        }
+        
+        .btn:hover {
+            background: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn-accent {
+            background: var(--accent);
+        }
+        
+        .btn-accent:hover {
+            background: #c0392b;
+        }
+        
+        .btn-light {
+            background: white;
+            color: var(--secondary);
+            border: 1px solid var(--secondary);
+        }
+        
+        .btn-light:hover {
+            background: var(--light);
+        }
+        
+        .cta {
+            background: linear-gradient(135deg, var(--accent), #c0392b);
+            color: white;
+            padding: 3rem 2rem;
+            text-align: center;
+            border-radius: 10px;
+            margin: 3rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .cta h3 {
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            position: relative;
+        }
+        
+        .cta p {
+            max-width: 700px;
+            margin: 0 auto 1.5rem;
+            font-size: 1.1rem;
+            position: relative;
+        }
+        
+        .detection-result {
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+            font-weight: bold;
+            text-align: center;
+            display: none;
+        }
+        
+        .deadlock-detected {
+            background: rgba(231, 76, 60, 0.2);
+            border-left: 4px solid var(--accent);
+            color: var(--accent);
+        }
+        
+        .no-deadlock {
+            background: rgba(46, 204, 113, 0.2);
+            border-left: 4px solid var(--success);
+            color: var(--success);
+        }
+        
+        .contact-form {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            margin-top: 2rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 1rem;
+            transition: border 0.3s;
+        }
+        
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            border-color: var(--secondary);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(52,152,219,0.1);
+        }
+        
+        footer {
+            background: linear-gradient(135deg, var(--dark), #1a252f);
+            color: white;
+            text-align: center;
+            padding: 2.5rem 0;
+            margin-top: 3rem;
+        }
+        
+        .social-links {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+        
+        .social-links a {
+            color: white;
+            font-size: 1.5rem;
+            transition: all 0.3s;
+        }
+        
+        .social-links a:hover {
+            color: var(--secondary);
+            transform: translateY(-3px);
+        }
+        
+        @media (max-width: 768px) {
+            nav {
+                flex-direction: column;
+                align-items: center;
+                padding: 0.5rem;
+            }
+            
+            nav a {
+                margin: 0.3rem 0;
+                width: 100%;
+                text-align: center;
+                justify-content: center;
+            }
+            
+            .hero h2 {
+                font-size: 2rem;
+            }
+            
+            .controls {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+        }
+        
+        /* Animation classes */
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(52, 152, 219, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(52, 152, 219, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(52, 152, 219, 0); }
+        }
+        
+        .shake {
+            animation: shake 0.5s;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>AutoDetect</h1>
+        <p>Advanced Automatic Deadlock Detection System</p>
+    </header>
+    
+    <nav>
+        <a href="#home"><i class="fas fa-home"></i> Home</a>
+        <a href="#features"><i class="fas fa-star"></i> Features</a>
+        <a href="#how-it-works"><i class="fas fa-cogs"></i> How It Works</a>
+        <a href="#demo"><i class="fas fa-play"></i> Demo</a>
+        <a href="#contact"><i class="fas fa-envelope"></i> Contact</a>
+    </nav>
+    
+    <div class="container">
+        <section id="home" class="hero">
+            <h2>Revolutionizing Deadlock Detection in Distributed Systems</h2>
+            <p>AutoDetect provides real-time deadlock detection and resolution for complex distributed systems, ensuring optimal performance and reliability with minimal overhead.</p>
+            <a href="#demo" class="btn pulse"><i class="fas fa-play-circle"></i> See It in Action</a>
+        </section>
+        
+        <section id="features">
+            <h2>Key Features</h2>
+            <div class="features">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <h3>Real-time Monitoring</h3>
+                    <p>Continuously monitors system processes and resource allocation to detect potential deadlocks as they form, with latency under 50ms.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <h3>Advanced Algorithms</h3>
+                    <p>Utilizes sophisticated wait-for graph analysis and cycle detection algorithms with 99.8% accuracy in deadlock identification.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <h3>Automated Resolution</h3>
+                    <p>Configurable policies for automatic deadlock resolution including victim selection, rollback, and priority-based approaches.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-network-wired"></i>
+                    </div>
+                    <h3>Distributed System Support</h3>
+                    <p>Specialized for modern distributed architectures with support for thousands of nodes and cross-system dependencies.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-bar"></i>
+                    </div>
+                    <h3>Comprehensive Reporting</h3>
+                    <p>Detailed analytics on deadlock occurrences, resolution paths, and system performance impact with exportable reports.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-sliders-h"></i>
+                    </div>
+                    <h3>Customizable Policies</h3>
+                    <p>Granular control over detection sensitivity, resolution strategies, and notification preferences tailored to your needs.</p>
+                </div>
+            </div>
+        </section>
+        
+        <section id="how-it-works" class="visualization">
+            <h2>How AutoDetect Works</h2>
+            <p>Our hybrid detection system combines the efficiency of centralized coordination with the scalability of distributed algorithms.</p>
+            
+            <div class="graph-container" id="static-graph">
+                <!-- Static graph will be rendered here by JavaScript -->
+            </div>
+            
+            <h3>Detection Process</h3>
+            <ol class="process-steps">
+                <li><strong>Resource Monitoring:</strong> Tracks all process-resource allocations across the distributed system</li>
+                <li><strong>Graph Construction:</strong> Builds a global wait-for graph representing all dependencies</li>
+                <li><strong>Cycle Analysis:</strong> Identifies cycles in the graph indicating potential deadlocks</li>
+                <li><strong>Validation:</strong> Confirms deadlocks while minimizing false positives</li>
+                <li><strong>Resolution:</strong> Executes configured policies to break deadlocks with minimal impact</li>
+            </ol>
+        </section>
+        
+        <section id="demo" class="visualization">
+            <h2>Interactive Deadlock Simulator</h2>
+            <p>Create your own deadlock scenario and see AutoDetect identify it in real-time.</p>
+            
+            <div class="controls">
+                <button id="add-process" class="btn btn-light"><i class="fas fa-plus-circle"></i> Add Process</button>
+                <button id="add-resource" class="btn btn-light"><i class="fas fa-plus-circle"></i> Add Resource</button>
+                <button id="create-edge" class="btn btn-light"><i class="fas fa-link"></i> Create Dependency</button>
+                <button id="detect-deadlock" class="btn"><i class="fas fa-search"></i> Detect Deadlock</button>
+                <button id="reset-graph" class="btn btn-accent"><i class="fas fa-redo"></i> Reset</button>
+            </div>
+            
+            <div class="graph-container" id="interactive-graph">
+                <!-- Interactive graph will be rendered here -->
+            </div>
+            
+            <div id="detection-result" class="detection-result" style="display: none;">
+                <!-- Detection results will be shown here -->
+            </div>
+            
+            <div class="cta">
+                <h3>Ready to implement AutoDetect in your production environment?</h3>
+                <p>Our enterprise solution reduces deadlock-related downtime by an average of 92% across all deployments.</p>
+                <a href="#contact" class="btn"><i class="fas fa-download"></i> Download Evaluation Version</a>
+            </div>
+        </section>
+        
+        <section id="contact">
+            <h2>Contact Our Team</h2>
+            <p>Get in touch with our experts to discuss how AutoDetect can solve your deadlock challenges.</p>
+            
+            <div class="contact-form">
+                <form id="contactForm">
+                    <div class="form-group">
+                        <label for="name">Name</label>
+                        <input type="text" id="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="company">Company</label>
+                        <input type="text" id="company">
+                    </div>
+                    <div class="form-group">
+                        <label for="message">Message</label>
+                        <textarea id="message" rows="5" required></textarea>
+                    </div>
+                    <button type="submit" class="btn"><i class="fas fa-paper-plane"></i> Send Message</button>
+                </form>
+            </div>
+            
+            <div style="margin-top: 2rem; text-align: center;">
+                <p>Or contact us directly:</p>
+                <p><i class="fas fa-envelope"></i> <a href="mailto:support@autodetect.com">support@autodetect.com</a></p>
+                <p><i class="fas fa-phone"></i> +1 (555) 123-4567</p>
+            </div>
+        </section>
+    </div>
+    
+    <footer>
+        <div class="social-links">
+            <a href="#"><i class="fab fa-twitter"></i></a>
+            <a href="#"><i class="fab fa-linkedin"></i></a>
+            <a href="#"><i class="fab fa-github"></i></a>
+            <a href="#"><i class="fab fa-youtube"></i></a>
+        </div>
+        <p>&copy; 2023 AutoDetect - Automatic Deadlock Detection System. All rights reserved.</p>
+        <p>Computer Science | Distributed Systems | Performance Optimization</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Smooth scrolling for navigation links
+            document.querySelectorAll('nav a').forEach(anchor => {
+                anchor.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href');
+                    const targetElement = document.querySelector(targetId);
+                    targetElement.scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                });
+            });
+            
+            // Static graph visualization
+            const staticGraph = document.getElementById('static-graph');
+            renderStaticGraph(staticGraph);
+            
+            // Interactive graph functionality
+            const interactiveGraph = document.getElementById('interactive-graph');
+            const detectionResult = document.getElementById('detection-result');
+            let nodes = [];
+            let edges = [];
+            let selectedNode = null;
+            let isCreatingEdge = false;
+            
+            // Add process node
+            document.getElementById('add-process').addEventListener('click', function() {
+                const nodeId = 'P' + (nodes.filter(n => n.type === 'process').length + 1);
+                const node = {
+                    id: nodeId,
+                    type: 'process',
+                    x: Math.random() * (interactiveGraph.offsetWidth - 60),
+                    y: Math.random() * (interactiveGraph.offsetHeight - 60)
+                };
+                nodes.push(node);
+                renderInteractiveGraph();
+            });
+            
+            // Add resource node
+            document.getElementById('add-resource').addEventListener('click', function() {
+                const nodeId = 'R' + (nodes.filter(n => n.type === 'resource').length + 1);
+                const node = {
+                    id: nodeId,
+                    type: 'resource',
+                    x: Math.random() * (interactiveGraph.offsetWidth - 60),
+                    y: Math.random() * (interactiveGraph.offsetHeight - 60)
+                };
+                nodes.push(node);
+                renderInteractiveGraph();
+            });
+            
+            // Toggle edge creation mode
+            document.getElementById('create-edge').addEventListener('click', function() {
+                isCreatingEdge = !isCreatingEdge;
+                this.classList.toggle('btn-light');
+                this.classList.toggle('btn');
+                
+                if (!isCreatingEdge) {
+                    selectedNode = null;
+                    renderInteractiveGraph();
+                }
+            });
+            
+            // Detect deadlock
+            document.getElementById('detect-deadlock').addEventListener('click', function() {
+                const hasDeadlock = checkForDeadlock();
+                
+                detectionResult.style.display = 'block';
+                if (hasDeadlock) {
+                    detectionResult.className = 'detection-result deadlock-detected';
+                    detectionResult.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Deadlock Detected! System has a circular wait condition.';
+                } else {
+                    detectionResult.className = 'detection-result no-deadlock';
+                    detectionResult.innerHTML = '<i class="fas fa-check-circle"></i> No Deadlock Detected. System is operating normally.';
+                }
+                
+                // Add animation for deadlock detection
+                if (hasDeadlock) {
+                    this.classList.add('shake');
+                    setTimeout(() => {
+                        this.classList.remove('shake');
+                    }, 500);
+                }
+            });
+            
+            // Reset graph
+            document.getElementById('reset-graph').addEventListener('click', function() {
+                nodes = [];
+                edges = [];
+                selectedNode = null;
+                isCreatingEdge = false;
+                detectionResult.style.display = 'none';
+                document.getElementById('create-edge').classList.remove('btn');
+                document.getElementById('create-edge').classList.add('btn-light');
+                renderInteractiveGraph();
+            });
+            
+            // Handle node selection for edge creation
+            interactiveGraph.addEventListener('click', function(e) {
+                if (!isCreatingEdge) return;
+                
+                const clickedNode = e.target.closest('.node');
+                if (!clickedNode) return;
+                
+                const nodeId = clickedNode.getAttribute('data-id');
+                const node = nodes.find(n => n.id === nodeId);
+                
+                if (!selectedNode) {
+                    // First node selected
+                    selectedNode = node;
+                    clickedNode.classList.add('pulse');
+                } else if (selectedNode.id === nodeId) {
+                    // Clicked same node, deselect
+                    selectedNode = null;
+                    clickedNode.classList.remove('pulse');
+                } else {
+                    // Second node selected, create edge
+                    edges.push({
+                        from: selectedNode.id,
+                        to: node.id
+                    });
+                    
+                    // Reset selection
+                    document.querySelectorAll('.node').forEach(n => n.classList.remove('pulse'));
+                    selectedNode = null;
+                    renderInteractiveGraph();
+                }
+            });
+            
+            // Make nodes draggable
+            interactiveGraph.addEventListener('mousedown', function(e) {
+                const nodeElement = e.target.closest('.node');
+                if (!nodeElement || isCreatingEdge) return;
+                
+                const nodeId = nodeElement.getAttribute('data-id');
+                const node = nodes.find(n => n.id === nodeId);
+                if (!node) return;
+                
+                let startX = e.clientX;
+                let startY = e.clientY;
+                let startNodeX = node.x;
+                let startNodeY = node.y;
+                
+                function moveNode(e) {
+                    const dx = e.clientX - startX;
+                    const dy = e.clientY - startY;
+                    
+                    node.x = startNodeX + dx;
+                    node.y = startNodeY + dy;
+                    
+                    renderInteractiveGraph();
+                }
+                
+                function stopDrag() {
+                    document.removeEventListener('mousemove', moveNode);
+                    document.removeEventListener('mouseup', stopDrag);
+                }
+                
+                document.addEventListener('mousemove', moveNode);
+                document.addEventListener('mouseup', stopDrag);
+            });
+            
+            // Contact form submission
+            document.getElementById('contactForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // In a real application, you would send this data to your server
+                const name = document.getElementById('name').value;
+                const email = document.getElementById('email').value;
+                
+                alert(`Thank you, ${name}! We've received your message and will contact you at ${email} shortly.`);
+                this.reset();
+            });
+            
+            // Render functions
+            function renderStaticGraph(container) {
+                // This would be replaced with a real graph visualization library in production
+                // For demo purposes, we'll create a simple deadlock scenario
+                container.innerHTML = `
+                    <svg width="100%" height="100%" viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Processes -->
+                        <circle cx="200" cy="100" r="40" fill="#3498db" />
+                        <text x="200" y="105" font-size="16" fill="white" text-anchor="middle" font-weight="bold">P1</text>
+                        
+                        <circle cx="200" cy="300" r="40" fill="#3498db" />
+                        <text x="200" y="305" font-size="16" fill="white" text-anchor="middle" font-weight="bold">P2</text>
+                        
+                        <!-- Resources -->
+                        <rect x="400" y="50" width="80" height="80" rx="10" fill="#e74c3c" />
+                        <text x="440" y="95" font-size="16" fill="white" text-anchor="middle" font-weight="bold">R1</text>
+                        
+                        <rect x="400" y="250" width="80" height="80" rx="10" fill="#e74c3c" />
+                        <text x="440" y="295" font-size="16" fill="white" text-anchor="middle" font-weight="bold">R2</text>
+                        
+                        <!-- Edges showing wait-for relationships -->
+                        <!-- P1 -> R1 -->
+                        <line x1="240" y1="100" x2="400" y2="90" stroke="#2c3e50" stroke-width="3" />
+                        <polygon points="400,90 390,85 390,95" fill="#2c3e50" />
+                        
+                        <!-- P2 -> R2 -->
+                        <line x1="240" y1="300" x2="400" y2="290" stroke="#2c3e50" stroke-width="3" />
+                        <polygon points="400,290 390,285 390,295" fill="#2c3e50" />
+                        
+                        <!-- R1 -> P2 (P1 holds R1, P2 waits) -->
+                        <line x1="400" y1="130" x2="240" y2="270" stroke="#2c3e50" stroke-width="3" stroke-dasharray="5,5" />
+                        <polygon points="240,270 250,265 250,275" fill="#2c3e50" />
+                        
+                        <!-- R2 -> P1 (P2 holds R2, P1 waits) -->
+                        <line x1="400" y1="330" x2="240" y2="130" stroke="#2c3e50" stroke-width="3" stroke-dasharray="5,5" />
+                        <polygon points="240,130 250,125 250,135" fill="#2c3e50" />
+                        
+                        <!-- Legend -->
+                        <rect x="550" y="50" width="200" height="120" fill="white" stroke="#ddd" rx="5" />
+                        <text x="560" y="80" font-size="14">Process: <circle cx="650" cy="73" r="8" fill="#3498db" /></text>
+                        <text x="560" y="105" font-size="14">Resource: <rect x="645" y="95" width="16" height="16" rx="3" fill="#e74c3c" /></text>
+                        <text x="560" y="130" font-size="14">Holds: <line x1="645" y1="125" x2="665" y2="125" stroke="#2c3e50" stroke-width="2" /></text>
+                        <text x="560" y="155" font-size="14">Waits: <line x1="645" y1="150" x2="665" y2="150" stroke="#2c3e50" stroke-width="2" stroke-dasharray="3,3" /></text>
+                        
+                        <!-- Deadlock indicator -->
+                        <text x="400" y="200" font-size="20" fill="#e74c3c" text-anchor="middle" font-weight="bold">Deadlock Detected (Cycle: P1 → R1 → P2 → R2 → P1)</text>
+                    </svg>
+                `;
+            }
+            
+            function renderInteractiveGraph() {
+                interactiveGraph.innerHTML = '';
+                
+                // Render edges first (so they appear behind nodes)
+                edges.forEach(edge => {
+                    const fromNode = nodes.find(n => n.id === edge.from);
+                    const toNode = nodes.find(n => n.id === edge.to);
+                    
+                    if (fromNode && toNode) {
+                        const edgeElement = document.createElement('div');
+                        edgeElement.className = 'edge';
+                        
+                        // Calculate edge position and angle
+                        const dx = toNode.x - fromNode.x;
+                        const dy = toNode.y - fromNode.y;
+                        const length = Math.sqrt(dx * dx + dy * dy);
+                        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                        
+                        // Position the edge
+                        edgeElement.style.width = `${length}px`;
+                        edgeElement.style.left = `${fromNode.x + 30}px`;
+                        edgeElement.style.top = `${fromNode.y + 30}px`;
+                        edgeElement.style.transform = `rotate(${angle}deg)`;
+                        
+                        // Add arrow head at the end
+                        const arrow = document.createElement('div');
+                        arrow.className = 'arrow';
+                        arrow.style.left = `${length - 8}px`;
+                        arrow.style.top = '-5px';
+                        arrow.style.borderWidth = '5px 0 5px 10px';
+                        arrow.style.borderColor = `transparent transparent transparent var(--dark)`;
+                        
+                        edgeElement.appendChild(arrow);
+                        interactiveGraph.appendChild(edgeElement);
+                    }
+                });
+                
+                // Render nodes
+                nodes.forEach(node => {
+                    const nodeElement = document.createElement('div');
+                    nodeElement.className = `node ${node.type}`;
+                    nodeElement.setAttribute('data-id', node.id);
+                    nodeElement.textContent = node.id;
+                    nodeElement.style.left = `${node.x}px`;
+                    nodeElement.style.top = `${node.y}px`;
+                    
+                    if (selectedNode && selectedNode.id === node.id) {
+                        nodeElement.classList.add('pulse');
+                    }
+                    
+                    interactiveGraph.appendChild(nodeElement);
+                });
+            }
+            
+            // Deadlock detection algorithm (simplified)
+            function checkForDeadlock() {
+                // Build adjacency list
+                const adj = {};
+                nodes.forEach(node => {
+                    adj[node.id] = [];
+                });
+                
+                edges.forEach(edge => {
+                    adj[edge.from].push(edge.to);
+                });
+                
+                // Check for cycles using DFS
+                const visited = {};
+                const recursionStack = {};
+                
+                function isCyclicUtil(nodeId) {
+                    if (!visited[nodeId]) {
+                        visited[nodeId] = true;
+                        recursionStack[nodeId] = true;
+                        
+                        for (const neighbor of adj[nodeId] || []) {
+                            if (!visited[neighbor] && isCyclicUtil(neighbor)) {
+                                return true;
+                            } else if (recursionStack[neighbor]) {
+                                return true;
+                            }
+                        }
+                    }
+                    
+                    recursionStack[nodeId] = false;
+                    return false;
+                }
+                
+                for (const node of nodes) {
+                    if (isCyclicUtil(node.id)) {
+                        return true;
+                    }
+                }
+                
+                return false;
+            }
+        });
+    </script>
+</body>
+</html>
